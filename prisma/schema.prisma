@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_URL")
+}
+
+model Users {
+  id       String  @id @default(uuid())
+  email    String  @unique
+  name     String?
+  password String
+  role     Role    @default(ADMIN)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  companies Company[]
+  employees Employee[]
+  settings  UserSettings?
+
+  @@map("users")
+}
+
+model UserSettings {
+  id String @id @default(uuid())
+
+  activeCompanyId String?  @unique
+  company         Company? @relation(fields: [activeCompanyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  userId String? @unique
+  user   Users?  @relation(fields: userId, references: id, onDelete: Cascade)
+
+  @@map("userSettings")
+}
+
+model Company {
+  id          String  @id @default(uuid())
+  name        String  @unique
+  description String?
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  userId String
+  user   Users  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  employees Employee[]
+  products  Product[]
+  settings  UserSettings[]
+  orders    Order[]
+
+  @@map("companies")
+}
+
+model Product {
+  id          String  @id @default(uuid())
+  name        String
+  description String?
+  price       Float
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  companyId String
+  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("products")
+}
+
+model Employee {
+  id       String @id @default(uuid())
+  name     String
+  email    String @unique
+  password String
+  role     Role   @default(USER)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  companyId String
+  userId    String
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    Users   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("employees")
+}
+
+model Order {
+  id        String      @id @default(uuid())
+  status    OrderStatus @default(PENDING)
+  total     Float
+  companyId String
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+
+  @@map("orders")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
