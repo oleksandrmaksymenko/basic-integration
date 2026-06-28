@@ -115,3 +115,40 @@ enum OrderStatus {
   PAID
   CANCELLED
 }
+
+enum TelegramUserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+}
+
+enum ChatChannelStatus {
+  ACTIVE         @map("active")
+  DISCONNECTED   @map("disconnected")
+  WEBHOOK_FAILED @map("webhook_failed")
+}
+
+model ChatChannel {
+  id        String            @id
+  companyId String
+  status    ChatChannelStatus
+  userAuth  TelegramUserAuth?
+
+  @@map("chatChannels")
+}
+
+model TelegramUserAuth {
+  id            String             @id @default(uuid())
+  channelId     String             @unique
+  phoneNumber   String
+  apiId         Int
+  apiHash       String
+  sessionString String?
+  status        TelegramUserStatus @default(PENDING)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  channel       ChatChannel        @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@map("telegramUserAuth")
+}
