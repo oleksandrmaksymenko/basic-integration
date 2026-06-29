@@ -8,7 +8,7 @@ const createSchema = z.object({
   password: z.string().min(8),
   companyId: z.string().uuid(),
   userId: z.string().uuid(),
-  role: z.enum(['ADMIN', 'USER']).optional(),
+  role: z.enum(['OWNER', 'MANAGER', 'EMPLOYEE']).optional(),
 });
 
 const updateSchema = z.object({

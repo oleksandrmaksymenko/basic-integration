@@ -4,137 +4,184 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("POSTGRES_URL")
 }
 
 model Users {
-  id       String  @id @default(uuid())
-  email    String  @unique
-  name     String?
-  password String
-  role     Role    @default(ADMIN)
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
-
-  companies Company[]
-  employees Employee[]
-  settings  UserSettings?
+  id                               String              @id @default(uuid())
+  email                            String              @unique
+  name                             String?
+  password                         String?
+  role                             Role                @default(MANAGER)
+  createdAt                        DateTime            @default(now())
+  updatedAt                        DateTime?           @updatedAt
+  resetToken                       String?             @unique
+  resetTokenExpiry                 DateTime?
+  address                          String?
+  iban                             String?             @unique
+  phone                            String?             @unique
+  status                           String?
+  taxNumber                        String?             @unique
+  createdById                      String?
+  imageUrl                         String?
+  surname                          String?
+  emailVerified                    Boolean             @default(false)
+  accounts                         accounts[]
+  chatMessages                     chatMessages[]
+  companies                        Company[]
+  companyCustomers                 companyCustomers[]
+  companyUser                      companyUser[]
+  conversations                    conversations[]
+  customerAddresses                customerAddresses[]
+  customerProfiles                 customerProfiles?
+  notificationReads                notificationReads[]
+  orders_orders_createdByIdTousers Order[]             @relation("orders_createdByIdTousers")
+  orders_orders_customerIdTousers  Order[]             @relation("orders_customerIdTousers")
+  sessions                         sessions[]
+  subscriptions                    subscriptions?
+  settings                         UserSettings?
+  users                            Users?              @relation("usersTousers", fields: [createdById], references: [id])
+  other_users                      Users[]             @relation("usersTousers")
 
   @@map("users")
 }
 
 model UserSettings {
-  id String @id @default(uuid())
-
-  activeCompanyId String?  @unique
-  company         Company? @relation(fields: [activeCompanyId], references: [id], onDelete: Cascade)
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
-
-  userId String? @unique
-  user   Users?  @relation(fields: userId, references: id, onDelete: Cascade)
+  id              String    @id @default(uuid())
+  activeCompanyId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime? @updatedAt
+  userId          String?   @unique
+  preferences     Json?
+  company         Company?  @relation(fields: [activeCompanyId], references: [id], onDelete: Cascade)
+  user            Users?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("userSettings")
 }
 
 model Company {
-  id          String  @id @default(uuid())
-  name        String  @unique
-  description String?
+  id                          String                   @id @default(uuid())
+  name                        String                   @unique
+  createdAt                   DateTime                 @default(now())
+  updatedAt                   DateTime?                @updatedAt
+  ownerId                     String
+  address                     String?
+  iban                        String?
+  phone                       String?
+  taxNumber                   String?
+  imageUrl                    String?
+  taxStatus                   String?
+  taxRate                     Decimal?                 @db.Decimal(5, 2)
+  npApiKey                    String?
+  npApiKeyUpdatedAt           DateTime?
+  npSenderPhone               String?
+  npSenderCityRef             String?
+  npSenderCityDescription     String?
+  npSenderDivisionRef         String?
+  npSenderDivisionDescription String?
+  monitoredCurrencies         String[]                 @default([])
+  autoReplies                 autoReplies[]
+  chatChannels                ChatChannel[]
+  users                       Users                    @relation(fields: [ownerId], references: [id])
+  companyCustomers            companyCustomers[]
+  companyFeatureFlags         companyFeatureFlags[]
+  companyUser                 companyUser[]
+  customerSegmentConfigs      customerSegmentConfigs[]
+  integrationSources          integrationSources[]
+  invoiceLogs                 invoiceLogs[]
+  loyaltyPrograms             loyaltyPrograms?
+  notifications               notifications[]
+  orderStatusConfigs          orderStatusConfigs[]
+  orders                      Order[]
+  products                    Product[]
+  stockMovements              stockMovements[]
+  tags                        tags[]
+  settings                    UserSettings[]
+  warehouses                  warehouses[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
-
-  userId String
-  user   Users  @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  employees Employee[]
-  products  Product[]
-  settings  UserSettings[]
-  orders    Order[]
-
+  @@index([ownerId])
   @@map("companies")
 }
 
 model Product {
-  id          String  @id @default(uuid())
-  name        String
-  description String?
-  price       Float
+  id               String            @id @default(uuid())
+  name             String
+  description      String?
+  pricePerUnit     Decimal           @db.Decimal(12, 2)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime?         @updatedAt
+  companyId        String
+  unit             String            @default("kg")
+  stock            Decimal           @default(0) @db.Decimal(12, 3)
+  imageUrl         String?
+  costPrice        Decimal?          @db.Decimal(12, 2)
+  exchangeRate     Decimal?          @db.Decimal(12, 4)
+  purchaseCurrency String?
+  variantColor     String?
+  variantGroupId   String?
+  externalId       String?
+  sourceType       IntegrationType?
+  orderItems       orderItems[]
+  company          Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  stockMovements   stockMovements[]
+  warehouseStocks  warehouseStocks[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
-
-  companyId String
-  company   Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-
+  @@unique([externalId, companyId])
+  @@index([companyId])
+  @@index([variantGroupId])
   @@map("products")
 }
 
-model Employee {
-  id       String @id @default(uuid())
-  name     String
-  email    String @unique
-  password String
-  role     Role   @default(USER)
-
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
-
-  companyId String
-  userId    String
-
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user    Users   @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("employees")
-}
-
 model Order {
-  id        String      @id @default(uuid())
-  status    OrderStatus @default(PENDING)
-  total     Float
-  companyId String
-  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  id                              String              @id @default(uuid())
+  total                           Decimal             @default(0) @db.Decimal(12, 2)
+  companyId                       String
+  createdAt                       DateTime            @default(now())
+  updatedAt                       DateTime?           @updatedAt
+  customerId                      String?
+  notes                           String?
+  createdById                     String?
+  discountPercent                 Decimal?            @db.Decimal(5, 2)
+  waybillNumber                   String?
+  waybillRef                      String?
+  statusId                        String?
+  conversationId                  String?
+  externalId                      String?
+  sourceType                      IntegrationType?
+  orderItems                      orderItems[]
+  company                         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  conversations                   conversations?      @relation(fields: [conversationId], references: [id])
+  users_orders_createdByIdTousers Users?              @relation("orders_createdByIdTousers", fields: [createdById], references: [id])
+  users_orders_customerIdTousers  Users?              @relation("orders_customerIdTousers", fields: [customerId], references: [id])
+  orderStatusConfigs              orderStatusConfigs? @relation(fields: [statusId], references: [id], onDelete: Restrict)
+  stockMovements                  stockMovements[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
-
+  @@unique([externalId, companyId])
+  @@index([companyId, createdAt(sort: Desc)])
+  @@index([companyId, createdById])
+  @@index([companyId, statusId])
+  @@index([customerId])
+  @@index([waybillNumber])
   @@map("orders")
 }
 
-enum Role {
-  USER
-  ADMIN
-}
-
-enum OrderStatus {
-  PENDING
-  PAID
-  CANCELLED
-}
-
-enum TelegramUserStatus {
-  PENDING
-  ACTIVE
-  SUSPENDED
-  EXPIRED
-}
-
-enum ChatChannelStatus {
-  ACTIVE         @map("active")
-  DISCONNECTED   @map("disconnected")
-  WEBHOOK_FAILED @map("webhook_failed")
-}
-
 model ChatChannel {
-  id        String            @id
-  companyId String
-  status    ChatChannelStatus
-  userAuth  TelegramUserAuth?
+  id                String            @id
+  companyId         String
+  provider          ChatProvider      @default(TELEGRAM_BOT)
+  botToken          String?
+  botUsername       String?
+  webhookSecret     String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime?
+  status            ChatChannelStatus @default(ACTIVE)
+  externalAccountId String?
+  tokenExpiresAt    DateTime?
+  companies         Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  conversations     conversations[]
+  userAuth          TelegramUserAuth?
 
+  @@unique([companyId, provider])
+  @@index([externalAccountId])
   @@map("chatChannels")
 }
 
@@ -151,4 +198,570 @@ model TelegramUserAuth {
   channel       ChatChannel        @relation(fields: [channelId], references: [id], onDelete: Cascade)
 
   @@map("telegramUserAuth")
+}
+
+model accounts {
+  id                String    @id
+  userId            String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  scope             String?
+  id_token          String?
+  password          String?
+  expiresAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime
+  users             Users     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model auditLogs {
+  id          String   @id
+  userId      String
+  userName    String?
+  userEmail   String?
+  userRole    String?
+  action      String
+  entity      String
+  entityId    String?
+  entityLabel String?
+  prevValue   Json?
+  nextValue   Json?
+  companyId   String
+  ip          String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+
+  @@index([companyId, createdAt(sort: Desc)])
+}
+
+model autoReplies {
+  id           String         @id
+  companyId    String
+  name         String
+  triggers     String[]
+  matchType    AutoReplyMatch @default(CONTAINS)
+  answer       String
+  enabled      Boolean        @default(true)
+  priority     Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime?
+  cooldownSec  Int            @default(60)
+  companies    Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  chatMessages chatMessages[]
+
+  @@index([companyId, enabled, priority])
+}
+
+model chatMessages {
+  id                String           @id
+  conversationId    String
+  externalMessageId String
+  direction         MessageDirection
+  text              String?
+  attachments       Json?
+  senderName        String?
+  sentById          String?
+  externalDate      DateTime?
+  createdAt         DateTime         @default(now())
+  autoReplyId       String?
+  autoReplies       autoReplies?     @relation(fields: [autoReplyId], references: [id])
+  conversations     conversations    @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  users             Users?           @relation(fields: [sentById], references: [id])
+
+  @@unique([conversationId, externalMessageId])
+  @@index([conversationId, createdAt(sort: Desc)])
+}
+
+model companyCustomers {
+  id            String        @id
+  companyId     String
+  customerId    String
+  createdAt     DateTime      @default(now())
+  loyaltyTierId String?
+  companies     Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users         Users         @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  loyaltyTiers  loyaltyTiers? @relation(fields: [loyaltyTierId], references: [id])
+
+  @@unique([companyId, customerId])
+  @@index([customerId])
+}
+
+model companyFeatureFlags {
+  id           String       @id
+  flagId       String
+  companyId    String
+  enabled      Boolean
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime?
+  companies    Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  featureFlags featureFlags @relation(fields: [flagId], references: [id], onDelete: Cascade)
+
+  @@unique([flagId, companyId])
+  @@index([companyId])
+}
+
+model companyUser {
+  id                  String           @id
+  companyId           String
+  userId              String
+  createdAt           DateTime         @default(now())
+  role                CompanyRole      @default(MANAGER)
+  baseSalary          Decimal?         @db.Decimal(12, 2)
+  salesPercent        Decimal?         @db.Decimal(5, 2)
+  salesBasis          SalesBasis       @default(EMPLOYEE_ORDERS)
+  companySalesPercent Decimal?         @db.Decimal(5, 2)
+  companies           Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users               Users            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  salaryPayments      salaryPayments[]
+
+  @@unique([companyId, userId])
+  @@index([userId])
+}
+
+model conversations {
+  id             String         @id
+  channelId      String
+  companyId      String
+  externalChatId String
+  customerId     String?
+  title          String?
+  username       String?
+  lastMessageAt  DateTime?
+  unreadCount    Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime?
+  lastInboundAt  DateTime?
+  chatMessages   chatMessages[]
+  chatChannels   ChatChannel    @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  users          Users?         @relation(fields: [customerId], references: [id])
+  orders         Order[]
+
+  @@unique([channelId, externalChatId])
+  @@index([companyId, lastMessageAt(sort: Desc)])
+  @@index([customerId])
+}
+
+model customerAddresses {
+  id                    String    @id
+  userId                String
+  label                 String?
+  shippingAddress       String?
+  city                  String?
+  postalCode            String?
+  region                String?
+  isDefault             Boolean   @default(false)
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime?
+  npCityRef             String?
+  npCityDescription     String?
+  npDivisionRef         String?
+  npDivisionDescription String?
+  users                 Users     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model customerProfiles {
+  id                     String                  @id
+  userId                 String                  @unique
+  shippingAddress        String?
+  city                   String?
+  postalCode             String?
+  region                 String?
+  notes                  String?
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime?
+  segmentId              String?
+  customerSegmentConfigs customerSegmentConfigs? @relation(fields: [segmentId], references: [id])
+  users                  Users                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([segmentId])
+}
+
+model customerSegmentConfigs {
+  id               String             @id
+  companyId        String
+  name             String
+  color            String             @default("#94a3b8")
+  sortOrder        Int                @default(0)
+  minOrders        Int?
+  minSpend         Decimal?           @db.Decimal(12, 2)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime?
+  customerProfiles customerProfiles[]
+  companies        Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, sortOrder])
+}
+
+model featureFlags {
+  id                  String                @id
+  key                 String                @unique
+  name                String
+  enabled             Boolean               @default(true)
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime?
+  companyFeatureFlags companyFeatureFlags[]
+}
+
+model integrationSources {
+  id                     String          @id
+  companyId              String
+  type                   IntegrationType
+  credentials            String?
+  isActive               Boolean         @default(false)
+  lastSyncAt             DateTime?
+  productSyncIntervalMin Int             @default(60)
+  orderSyncMode          String          @default("POLL_5MIN")
+  syncStatus             String?
+  syncError              String?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime?
+  companies              Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, type])
+  @@index([companyId])
+}
+
+model invoiceLogs {
+  id           String   @id
+  companyId    String
+  orderId      String
+  customerName String?
+  amount       Decimal  @db.Decimal(12, 2)
+  fileName     String
+  generatedAt  DateTime @default(now())
+  companies    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, generatedAt(sort: Desc)])
+}
+
+model loyaltyPrograms {
+  id           String         @id
+  companyId    String         @unique
+  enabled      Boolean        @default(false)
+  name         String         @default("Програма лояльності")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime?
+  companies    Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  loyaltyTiers loyaltyTiers[]
+}
+
+model loyaltyTiers {
+  id               String             @id
+  programId        String
+  name             String
+  description      String?
+  color            String             @default("#94a3b8")
+  sortOrder        Int                @default(0)
+  minOrders        Int?
+  minSpend         Decimal?           @db.Decimal(12, 2)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime?
+  discountPercent  Decimal?           @db.Decimal(5, 2)
+  companyCustomers companyCustomers[]
+  loyaltyPrograms  loyaltyPrograms    @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([programId, sortOrder])
+}
+
+model notificationReads {
+  id             String        @id
+  notificationId String
+  userId         String
+  readAt         DateTime      @default(now())
+  notifications  notifications @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  users          Users         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, userId])
+  @@index([userId])
+}
+
+model notifications {
+  id                String              @id
+  type              NotificationType
+  title             String
+  description       String?
+  actorName         String?
+  entityId          String?
+  companyId         String
+  createdAt         DateTime            @default(now())
+  notificationReads notificationReads[]
+  companies         Company             @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt(sort: Desc)])
+}
+
+model orderItems {
+  id          String      @id
+  quantity    Decimal     @db.Decimal(12, 3)
+  price       Decimal     @db.Decimal(12, 2)
+  orderId     String
+  productId   String
+  costPrice   Decimal?    @db.Decimal(12, 2)
+  warehouseId String?
+  orders      Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  products    Product     @relation(fields: [productId], references: [id])
+  warehouses  warehouses? @relation(fields: [warehouseId], references: [id])
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([warehouseId])
+}
+
+model orderStatusConfigs {
+  id             String    @id
+  companyId      String
+  name           String
+  color          String    @default("#94a3b8")
+  sortOrder      Int       @default(0)
+  isFinal        Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime?
+  isCancellation Boolean   @default(false)
+  isLost         Boolean   @default(false)
+  isReturn       Boolean   @default(false)
+  npStatusCodes  String[]  @default([])
+  companies      Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orders         Order[]
+
+  @@index([companyId, sortOrder])
+}
+
+model salaryPayments {
+  id            String       @id
+  companyUserId String?
+  companyId     String
+  amount        Decimal      @db.Decimal(12, 2)
+  periodYear    Int
+  periodMonth   Int
+  note          String?
+  paidAt        DateTime     @default(now())
+  createdAt     DateTime     @default(now())
+  companyUser   companyUser? @relation(fields: [companyUserId], references: [id])
+
+  @@index([companyId, paidAt(sort: Desc)])
+  @@index([companyUserId, paidAt(sort: Desc)])
+}
+
+model sessions {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  users     Users    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model stockMovements {
+  id          String            @id
+  productId   String
+  companyId   String
+  type        StockMovementType
+  delta       Decimal           @db.Decimal(12, 3)
+  stockAfter  Decimal           @db.Decimal(12, 3)
+  orderId     String?
+  userId      String?
+  userName    String?
+  note        String?
+  createdAt   DateTime          @default(now())
+  warehouseId String?
+  companies   Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orders      Order?            @relation(fields: [orderId], references: [id])
+  products    Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouses  warehouses?       @relation(fields: [warehouseId], references: [id])
+
+  @@index([companyId, createdAt(sort: Desc)])
+  @@index([orderId])
+  @@index([productId, createdAt(sort: Desc)])
+}
+
+model subscriptions {
+  id        String             @id
+  plan      SubscriptionPlan   @default(FREE)
+  status    SubscriptionStatus @default(ACTIVE)
+  expiresAt DateTime?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime?
+  userId    String             @unique
+  users     Users              @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model tag_assignments {
+  id         String  @id
+  tagId      String
+  entityId   String
+  entityType String?
+  tags       tags    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([tagId, entityId])
+  @@index([entityId])
+}
+
+model tags {
+  id              String            @id
+  name            String
+  color           String            @default("#6366f1")
+  entityType      String
+  companyId       String
+  createdAt       DateTime          @default(now())
+  tag_assignments tag_assignments[]
+  companies       Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([name, entityType, companyId])
+  @@index([companyId, entityType])
+}
+
+model verifications {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+
+  @@index([identifier])
+}
+
+model warehouseStocks {
+  id          String     @id
+  warehouseId String
+  productId   String
+  quantity    Decimal    @default(0) @db.Decimal(12, 3)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime?
+  products    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouses  warehouses @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([warehouseId, productId])
+  @@index([productId])
+}
+
+model warehouses {
+  id              String            @id
+  companyId       String
+  name            String
+  isDefault       Boolean           @default(false)
+  sortOrder       Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime?
+  orderItems      orderItems[]
+  stockMovements  stockMovements[]
+  warehouseStocks warehouseStocks[]
+  companies       Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, name])
+  @@index([companyId, sortOrder])
+}
+
+enum Role {
+  MANAGER
+  OWNER
+  ADMIN
+  CUSTOMER
+}
+
+enum TelegramUserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  EXPIRED
+}
+
+enum ChatChannelStatus {
+  ACTIVE         @map("active")
+  DISCONNECTED   @map("disconnected")
+  WEBHOOK_FAILED @map("webhook_failed")
+}
+
+enum AutoReplyMatch {
+  CONTAINS
+  EXACT
+}
+
+enum ChatProvider {
+  TELEGRAM_BOT
+  TELEGRAM_USER
+  VIBER
+  INSTAGRAM
+}
+
+enum CompanyRole {
+  OWNER
+  MANAGER
+  EMPLOYEE
+}
+
+enum IntegrationType {
+  PROM
+  ROZETKA
+  SHOPIFY
+  WOOCOMMERCE
+  ETSY
+  AMAZON
+  WIX
+  ECWID
+  SQUARESPACE
+  OLX
+  MAUDAU
+  EBAY
+}
+
+enum MessageDirection {
+  IN
+  OUT
+}
+
+enum NotificationType {
+  ORDER_CREATED
+  ORDER_STATUS_CHANGED
+  ORDER_DELETED
+  PRODUCT_CREATED
+  PRODUCT_UPDATED
+  PRODUCT_DELETED
+  PRODUCT_IMPORTED
+  EMPLOYEE_ADDED
+  CUSTOMER_CREATED
+  PRICE_CHANGED
+  STOCK_CHANGED
+  EMPLOYEE_REMOVED
+  CHAT_MESSAGE
+}
+
+enum SalesBasis {
+  PAID_ORDERS
+  EMPLOYEE_ORDERS
+}
+
+enum StockMovementType {
+  RECEIPT
+  SALE
+  RETURN
+  ADJUSTMENT
+  RESERVATION
+  RESERVATION_RELEASED
+  TRANSFER
+}
+
+enum SubscriptionPlan {
+  FREE
+  STARTER
+  BUSINESS
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
 }

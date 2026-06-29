@@ -1,25 +1,33 @@
 import prisma from '@/db';
+import {randomUUID} from 'node:crypto';
 
 const select = {
   id: true,
-  name: true,
-  email: true,
-  company: {select: {name: true}},
-  user: {select: {name: true}},
+  role: true,
+  companies: {select: {name: true}},
+  users: {select: {name: true, email: true}},
 };
 
 export const employeeRepository = {
-  findAll: () => prisma.employee.findMany({select}),
-  findById: (id: string) => prisma.employee.findUnique({where: {id}, select}),
+  findAll: () => prisma.companyUser.findMany({select}),
+  findById: (id: string) => prisma.companyUser.findUnique({where: {id}, select}),
   create: (data: {
     name: string;
     email: string;
     password: string;
     companyId: string;
     userId: string;
-    role?: 'ADMIN' | 'USER';
-  }) => prisma.employee.create({data, select}),
+    role?: 'OWNER' | 'MANAGER' | 'EMPLOYEE';
+  }) => prisma.companyUser.create({
+    data: {
+      id: randomUUID(),
+      companyId: data.companyId,
+      userId: data.userId,
+      ...(data.role ? {role: data.role} : {}),
+    },
+    select,
+  }),
   update: (id: string, data: Record<string, unknown>) =>
-    prisma.employee.update({where: {id}, data, select}),
-  remove: (id: string) => prisma.employee.delete({where: {id}}),
+    prisma.companyUser.update({where: {id}, data: data as any, select}),
+  remove: (id: string) => prisma.companyUser.delete({where: {id}}),
 };

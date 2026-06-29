@@ -3,8 +3,7 @@ import {companyRepository} from '@/repositories';
 
 const createSchema = z.object({
   name: z.string().min(1),
-  description: z.string().optional(),
-  userId: z.string().uuid(),
+  ownerId: z.string().uuid(),
 });
 
 const updateSchema = z.object({

@@ -9,10 +9,12 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.3",
+    "@prisma/adapter-pg": "^7.0.0",
+    "@prisma/client": "^7.0.0",
     "bcryptjs": "^3.0.3",
-    "next": "14.2.35",
-    "prisma": "^6.19.3",
+    "dotenv": "^17.4.2",
+    "next": "16.2.6",
+    "pg": "^8.22.0",
     "react": "^18",
     "react-dom": "^18",
     "telegram": "^2.26.22",
@@ -21,8 +23,10 @@
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
     "@types/node": "^20",
+    "@types/pg": "^8.20.0",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "prisma": "^7.0.0",
     "typescript": "^5"
   }
 }

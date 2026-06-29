@@ -4,14 +4,14 @@ import {productRepository} from '@/repositories';
 const createSchema = z.object({
   name: z.string().min(1),
   description: z.string().optional(),
-  price: z.number().positive(),
+  pricePerUnit: z.number().positive(),
   companyId: z.string().uuid(),
 });
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
   description: z.string().optional(),
-  price: z.number().positive().optional(),
+  pricePerUnit: z.number().positive().optional(),
 });
 
 export const productService = {

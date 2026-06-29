@@ -2,9 +2,6 @@ import 'dotenv/config';
 import {ok, err, catchErr} from '@/lib/apiResponse';
 import {telegramUserManager} from '@/lib/telegramUserManager';
 
-const APP_ID = Number(process.env.TELEGRAM_API_ID) ?? 0;
-const APP_HASH = process.env.TELEGRAM_API_HASH ?? '';
-
 function authorized(req: Request) {
   return req.headers.get('x-webhook-secret') === process.env.INTERNAL_WEBHOOK_SECRET;
 }
@@ -16,21 +13,17 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => null);
 
-  if (!body?.channelId || !body?.phoneNumber) {
-    return err('Missing required fields', 400);
+  if (!body?.channelId || !body?.password) {
+    return err('Missing channelId or password', 400);
   }
 
   try {
-    await telegramUserManager.init();
-    const result = await telegramUserManager.sendCode(
-      body.channelId,
-      body.phoneNumber,
-      APP_ID,
-      APP_HASH,
-    );
-    return ok(result);
+    telegramUserManager.submitQrPassword(body.channelId, body.password);
+    return ok({submitted: true});
   } catch (e: any) {
-    console.error('[send-code] error:', e?.errorMessage ?? e?.message ?? e);
+    if ((e as {status?: number}).status === 409) {
+      return err(e.message, 409);
+    }
     return catchErr(e);
   }
 }
